@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+
+DISABLE_COLORS=false
+
+_change_color_state() {
+  if [ "$DISABLE_COLORS" = true ]; then
+    C_DIM=""
+    C_INFO=""
+    C_WARN=""
+    C_ERROR=""
+    C_PATH=""
+    C_YPATH=""
+    C_RESET=""
+  else
+    C_DIM="\e[0;90m"
+    C_INFO="\e[0;1;92m"
+    C_WARN="\e[0;1;93m"
+    C_ERROR="\e[0;1;91m"
+    C_PATH="\e[0;1;3;94m"
+    C_YPATH="\e[0;1;3;93m"
+    C_RESET="\e[0m"
+  fi
+}
+
+[ -n "$NO_COLOR" ] && DISABLE_COLORS=true
+_change_color_state
+
+_info() {
+  echo -e "${C_DIM}:: ${C_INFO}INFO${C_RESET}${C_DIM} - $1${C_RESET}"
+}
+
+_warn() {
+  echo -e "${C_DIM}:: ${C_WARN}WARN${C_RESET}${C_DIM} - $1${C_RESET}" >&2
+}
+
+_error() {
+  echo -e "${C_DIM}:: ${C_ERROR}ERROR${C_RESET}${C_DIM} - $1${C_RESET}" >&2
+}
+
+_checkCommandExists() {
+  local cmd="$1"
+  if ! command -v "$cmd" >/dev/null; then
+    return 1
+  fi
+  return 0
+}
+
+_run_as_root() {
+  if ((EUID == 0)); then
+    "$@"
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo "$@"
+  elif command -v doas >/dev/null 2>&1; then
+    doas "$@"
+  else
+    _error "${C_PATH}sudo${C_DIM} or ${C_PATH}doas${C_DIM} is required."
+    return 127
+  fi
+}
+
+sleep 1
+clear
+
+export STEAMPATH="${STEAMPATH:-$HOME/.local/share/Steam}"
+export MIIRDIR="${MIIRDIR:-$HOME/.local/share/miir}"
+
+REPOSITORY="YetAnotherMechanicusEnjoyer/dotfiles"
+
+printf "%s" "${C_YPATH}"
+if _checkCommandExists "figlet"; then
+  figlet -f smslant "Miir"
+else
+  echo "Miir"
+fi
+echo -e "${C_RESET}"
+
+_info "${C_PATH}Miir${C_DIM} setup ${C_YPATH}started${C_DIM}..."
+echo
+
+if [ ! -d "$MIIRDIR/" ]; then
+  mkdir -p "$MIIRDIR/" &>/dev/null
+  _info "Cloning ${C_PATH}$REPOSITORY${C_DIM} to ${C_PATH}$MIIRDIR"
+  echo
+  FORMAT=$(gum choose "HTTPS" "SSH" "Abort")
+
+  if [ "$FORMAT" == "HTTPS" ]; then
+    git clone "https://github.com/$REPOSITORY.git" "$MIIRDIR/"
+  elif [ "$FORMAT" == "SSH" ]; then
+    git clone "git@github.com:$REPOSITORY.git" "$MIIRDIR/"
+  elif [ "$FORMAT" == "Abort" ]; then
+    _info "Setup aborted."
+    exit 0
+  fi
+else
+  echo
+  _warn "${C_PATH}$MIIRDIR/${C_DIM} already exists."
+fi
+
+[ ! -d "$MIIRDIR/" ] && _error "${C_PATH}$MIIRDIR/${C_DIM} folder not found" && exit 1
+
+printf "%s:: Press %s[ENTER]%s to continue.%s" "${C_DIM}" "${C_PATH}" "${C_DIM}" "${C_RESET}"
+read
+
+source "$MIIRDIR/package_manager.sh"
