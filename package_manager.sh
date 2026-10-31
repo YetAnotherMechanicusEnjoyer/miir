@@ -195,7 +195,7 @@ _package_check() {
   ((${#PACKAGE_MISSING[@]} == 0))
 }
 
-_run_as_root() {
+_sudo() {
   if ((EUID == 0)); then
     "$@"
   elif command -v sudo >/dev/null 2>&1; then
@@ -231,7 +231,7 @@ _package_install() {
 
   case "$PACKAGE_MANAGER" in
   pacman)
-    _run_as_root pacman -S --needed --noconfirm "${packages[@]}"
+    _sudo pacman -S --needed --noconfirm "${packages[@]}"
     ;;
   yay)
     if ((EUID == 0)); then
@@ -241,18 +241,18 @@ _package_install() {
     yay -S --needed --noconfirm "${packages[@]}"
     ;;
   apt-get)
-    _run_as_root apt-get install -y --no-install-recommends \
+    _sudo apt-get install -y --no-install-recommends \
       "${packages[@]}"
     ;;
   apt)
-    _run_as_root apt install -y --no-install-recommends \
+    _sudo apt install -y --no-install-recommends \
       "${packages[@]}"
     ;;
   dnf | yum)
-    _run_as_root "$PACKAGE_MANAGER" install -y "${packages[@]}"
+    _sudo "$PACKAGE_MANAGER" install -y "${packages[@]}"
     ;;
   apk)
-    _run_as_root apk add "${packages[@]}"
+    _sudo apk add "${packages[@]}"
     ;;
   nix)
     for pkg in "${packages[@]}"; do
