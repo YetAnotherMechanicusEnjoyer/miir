@@ -66,7 +66,7 @@ export MIIRDIR="${MIIRDIR:-$HOME/.local/share/miir}"
 
 REPOSITORY="YetAnotherMechanicusEnjoyer/dotfiles"
 
-printf "%s" "${C_YPATH}"
+echo -ne "${C_YPATH}"
 if _checkCommandExists "figlet"; then
   figlet -f smslant "Miir"
 else
@@ -98,7 +98,7 @@ fi
 
 [ ! -d "$MIIRDIR/" ] && _error "${C_PATH}$MIIRDIR/${C_DIM} folder not found" && exit 1
 
-printf "%s:: Press %s[ENTER]%s to continue.%s" "${C_DIM}" "${C_PATH}" "${C_DIM}" "${C_RESET}"
+echo -ne "${C_DIM}:: Press ${C_PATH}[ENTER]${C_DIM} to continue.${C_RESET}"
 read
 
 source "$MIIRDIR/package_manager.sh"
