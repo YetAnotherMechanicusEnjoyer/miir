@@ -127,6 +127,8 @@ export MIIR_CACHE="${MIIR_CACHE:-$HOME/.cache/miir}"
 
 REPOSITORY="YetAnotherMechanicusEnjoyer/miir"
 
+STEAM_USER=${STEAM_USER:-}
+
 SKYRIMPATH="$STEAMPATH/steamapps/common/Skyrim Special Edition"
 PROTONPATH="$STEAMPATH/steamapps/compatdata/489830"
 
@@ -173,6 +175,10 @@ if ! _checkCommandExists "protontricks" || ! _checkCommandExists "protontricks-l
   _error "Failed to install ${C_PATH}protontricks${C_DIM}. Try installing manually."
   exit 1
 fi
+
+while [ -z "$STEAM_USER" ]; do
+  read -p "${C_DIM}:: Enter your ${C_PATH}Steam${C_DIM} username:${C_RESET} " STEAM_USER
+done
 
 source "$MIIRDIR/steamcmd.sh"
 
@@ -225,6 +231,6 @@ MimeType=x-scheme-handler/nxm;
 Terminal=false" >"$VORTEX_DESKTOP"
 chmod +x "$VORTEX_LINK"
 
-_info "Installation complete! Install Keizaal Collection on Vortex."
+_info "Installation complete! Install ${C_YPATH}Keizaal Collection${C_DIM} on ${C_YPATH}Vortex${C_DIM}."
 echo -ne "${C_DIM}:: Press ${C_PATH}[ENTER]${C_DIM} to close.${C_RESET}"
 read
