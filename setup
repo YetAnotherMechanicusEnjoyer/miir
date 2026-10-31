@@ -93,13 +93,47 @@ _checkCommandExists() {
   return 0
 }
 
+_clone_repo() {
+  local repository="$1"
+  mkdir -p "$(dirname "$MIIRDIR/")" &>/dev/null
+
+  if ! _checkCommandExists "git"; then
+    _error "${C_PATH}git${C_DIM} must be installed."
+    exit 1
+  fi
+
+  _info "Cloning ${C_PATH}$repository${C_DIM} to ${C_PATH}$MIIRDIR"
+  echo -e "\n${C_DIM} Select a protocol:"
+
+  _choose format "HTTPS" "SSH" "abort"
+  case $format in
+  "HTTPS") git clone "https://github.com/$repository.git" "$MIIRDIR/" ;;
+  "SSH") git clone "git@github.com:$repository.git" "$MIIRDIR/" ;;
+  "abort") _warn "Cloning aborted." ;;
+  esac
+}
+
+if ((EUID == 0)); then
+  _error "Script must not be executed as ${C_PATH}root${C_DIM}!"
+  exit 1
+fi
+
 sleep 1
 clear
 
 export STEAMPATH="${STEAMPATH:-$HOME/.local/share/Steam}"
 export MIIRDIR="${MIIRDIR:-$HOME/.local/share/miir}"
+export MIIR_CACHE="${MIIR_CACHE:-$HOME/.cache/miir}"
 
 REPOSITORY="YetAnotherMechanicusEnjoyer/miir"
+
+SKYRIMPATH="$STEAMPATH/steamapps/common/Skyrim Special Edition"
+PROTONPATH="$STEAMPATH/steamapps/compatdata/489830"
+
+VORTEX_LINK="https://api.nexusmods.com/vortex/download"
+KEIZAAL_LINK="https://keizaal.com/api/launcher"
+
+SKYRIM_APPID="489830"
 
 echo -ne "${C_YPATH}"
 if _checkCommandExists "figlet"; then
@@ -113,26 +147,12 @@ _info "${C_PATH}Miir${C_DIM} setup ${C_YPATH}started${C_DIM}..."
 echo
 
 if [ ! -d "$MIIRDIR/" ]; then
-  mkdir -p "$(dirname "$MIIRDIR/")" &>/dev/null
-
-  if ! _checkCommandExists "git"; then
-    _error "${C_PATH}git${C_DIM} must be installed."
-    exit 1
-  fi
-
-  _info "Cloning ${C_PATH}$REPOSITORY${C_DIM} to ${C_PATH}$MIIRDIR"
-  echo -e "\n${C_DIM} Select a protocol:"
-
-  _choose format "HTTPS" "SSH" "Abort"
-  case $format in
-  "HTTPS") git clone "https://github.com/$REPOSITORY.git" "$MIIRDIR/" ;;
-  "SSH") git clone "git@github.com:$REPOSITORY.git" "$MIIRDIR/" ;;
-  "Abort") _warn "Cloning aborted." ;;
-  esac
+  _clone_repo "$REPOSITORY"
 else
   _warn "${C_PATH}$MIIRDIR/${C_DIM} already exists."
+  _choose clone "override" "continue"
+  [ $clone == "override" ] && rm -rf "$MIIRDIR" && _clone_repo "$REPOSITORY"
 fi
-echo
 
 [ ! -d "$MIIRDIR/" ] && _error "${C_PATH}$MIIRDIR/${C_DIM} folder not found." && exit 1
 
@@ -140,4 +160,71 @@ echo -ne "${C_DIM}:: Press ${C_PATH}[ENTER]${C_DIM} to continue.${C_RESET}"
 read
 echo
 
+[ ! -d "$STEAMPATH" ] && _error "${C_PATH}$STEAMPATH/${C_DIM} folder not found. Specify Steam path via ${C_YPATH}STEAMPATH${C_DIM} variable" && exit 1
+[ ! -d "$SKYRIMPATH" ] && _error "${C_PATH}$SKYRIMPATH/${C_DIM} folder not found. Skyrim is not installed." && exit 1
+[ ! -d "$PROTONPATH" ] && _error "${C_PATH}$PROTONPATH/${C_DIM} folder not found. You must start Skyrim at least once." && exit 1
+
 source "$MIIRDIR/package_manager.sh"
+source "$MIIRDIR/dependencies.sh"
+
+_dependency_handle "protontricks" "curl"
+
+if ! _checkCommandExists "protontricks" || ! _checkCommandExists "protontricks-launch"; then
+  _error "Failed to install ${C_PATH}protontricks${C_DIM}. Try installing manually."
+  exit 1
+fi
+
+source "$MIIRDIR/steamcmd.sh"
+
+_steamcmd_install || {
+  _error "Failed to install ${C_PATH}steamcmd${C_DIM}. Try installing manually."
+  exit 1
+}
+_steamcmd_downgrade_keizaal || {
+  _error "Failed to downgrade ${C_PATH}Skyrim${C_DIM}. Try downgrading manually."
+  exit 1
+}
+
+[ ! -d "$MIIR_CACHE" ] && mkdir -p "$MIIR_CACHE"
+
+if ! _checkCommandExists "curl"; then
+  _error "Missing ${C_PATH}curl${C_DIM} dependency. Try installing manually."
+  exit 1
+fi
+
+curl -sSfL "$KEIZAAL_LINK" >"$MIIR_CACHE/keizaal.exe" || {
+  _error "Installing ${C_PATH}Keizaal Online Launcher${C_DIM}."
+  exit 1
+}
+curl -sSfL "$VORTEX_LINK" >"$MIIR_CACHE/vortex.exe" || {
+  _error "Installing ${C_PATH}Vortex Setup${C_DIM}."
+  exit 1
+}
+
+protontricks-launch --appid "$SKYRIM_APPID" "$MIIR_CACHE/keizaal.exe"
+protontricks-launch --appid "$SKYRIM_APPID" "$MIIR_CACHE/vortex.exe"
+
+KEIZAAL_DESKTOP="$HOME/.local/share/applications/keizaal-online.desktop"
+VORTEX_DESKTOP="$HOME/.local/share/applications/keizaal-vortex.desktop"
+
+echo \
+  "[Desktop Entry]
+Type=Application
+Name=Keizaal Online
+Exec=protontricks-launch --appid 489830 \"/home/archmagos/.local/share/Steam/steamapps/compatdata/489830/pfx/drive_c/users/steamuser/AppData/Local/Programs/skyrim-rp-launcher/keizaal-online.exe\" %u
+MimeType=x-scheme-handler/skyrim-rp;
+Terminal=false" >"$KEIZAAL_DESKTOP"
+chmod +x "$KEIZAAL_LINK"
+
+echo \
+  "[Desktop Entry]
+Type=Application
+Name=Vortex (Keizaal Online)
+Exec=protontricks-launch --appid 489830 \"/home/archmagos/.local/share/Steam/steamapps/compatdata/489830/pfx/drive_c/Program\ Files/Vortex/Vortex.exe\" --disable-gpu --no-sandbox %u
+MimeType=x-scheme-handler/nxm;
+Terminal=false" >"$VORTEX_DESKTOP"
+chmod +x "$VORTEX_LINK"
+
+_info "Installation complete! Install Keizaal Collection on Vortex."
+echo -ne "${C_DIM}:: Press ${C_PATH}[ENTER]${C_DIM} to close.${C_RESET}"
+read
