@@ -8,17 +8,19 @@ _change_color_state() {
     C_INFO=""
     C_WARN=""
     C_ERROR=""
+    C_CYAN=""
     C_PATH=""
     C_YPATH=""
     C_RESET=""
   else
-    C_DIM="\e[0;90m"
-    C_INFO="\e[0;1;92m"
-    C_WARN="\e[0;1;93m"
-    C_ERROR="\e[0;1;91m"
-    C_PATH="\e[0;1;3;94m"
-    C_YPATH="\e[0;1;3;93m"
-    C_RESET="\e[0m"
+    C_DIM=$'\x1b[0;90m'
+    C_INFO=$'\x1b[0;1;92m'
+    C_WARN=$'\x1b[0;1;93m'
+    C_ERROR=$'\x1b[0;1;91m'
+    C_CYAN=$'\x1b[0;1;96m'
+    C_PATH=$'\x1b[0;1;3;94m'
+    C_YPATH=$'\x1b[0;1;3;93m'
+    C_RESET=$'\x1b[0m'
   fi
 }
 
@@ -37,6 +39,52 @@ _error() {
   echo -e "${C_DIM}:: ${C_ERROR}ERROR${C_RESET}${C_DIM} - $1${C_RESET}" >&2
 }
 
+_choose() {
+  local -n res=$1
+  shift
+
+  local options=("$@")
+  local selected=0
+  local current=0
+
+  local HIDE_CURSOR=$'\033[?25l'
+  local SHOW_CURSOR=$'\033[?25h'
+
+  echo -ne "$HIDE_CURSOR"
+
+  while true; do
+    if ((current > 0)); then
+      echo -ne "\033[${#options[@]}A"
+    fi
+
+    for i in "${!options[@]}"; do
+      if ((i == selected)); then
+        echo -e "  ${C_CYAN}> ${options[i]}${C_RESET}"
+      else
+        echo -e "    ${C_DIM}${options[i]}${C_RESET}"
+      fi
+    done
+    current=1
+
+    read -rsn1 key
+    if [[ $key == $'\033' ]]; then
+      read -rsn2 key
+      if [[ $key == "[A" ]]; then
+        ((selected--))
+        ((selected < 0)) && selected=$((${#options[@]} - 1))
+      elif [[ $key == "[B" ]]; then
+        ((selected++))
+        ((selected >= ${#options[@]})) && selected=0
+      fi
+    elif [[ $key == "" ]]; then
+      break
+    fi
+  done
+
+  echo -e "$SHOW_CURSOR"
+  res=${options[$selected]}
+}
+
 _checkCommandExists() {
   local cmd="$1"
   if ! command -v "$cmd" >/dev/null; then
@@ -45,26 +93,13 @@ _checkCommandExists() {
   return 0
 }
 
-_run_as_root() {
-  if ((EUID == 0)); then
-    "$@"
-  elif command -v sudo >/dev/null 2>&1; then
-    sudo "$@"
-  elif command -v doas >/dev/null 2>&1; then
-    doas "$@"
-  else
-    _error "${C_PATH}sudo${C_DIM} or ${C_PATH}doas${C_DIM} is required."
-    return 127
-  fi
-}
-
 sleep 1
 clear
 
 export STEAMPATH="${STEAMPATH:-$HOME/.local/share/Steam}"
 export MIIRDIR="${MIIRDIR:-$HOME/.local/share/miir}"
 
-REPOSITORY="YetAnotherMechanicusEnjoyer/dotfiles"
+REPOSITORY="YetAnotherMechanicusEnjoyer/miir"
 
 echo -ne "${C_YPATH}"
 if _checkCommandExists "figlet"; then
@@ -78,27 +113,31 @@ _info "${C_PATH}Miir${C_DIM} setup ${C_YPATH}started${C_DIM}..."
 echo
 
 if [ ! -d "$MIIRDIR/" ]; then
-  mkdir -p "$MIIRDIR/" &>/dev/null
-  _info "Cloning ${C_PATH}$REPOSITORY${C_DIM} to ${C_PATH}$MIIRDIR"
-  echo
-  FORMAT=$(gum choose "HTTPS" "SSH" "Abort")
+  mkdir -p "$(dirname "$MIIRDIR/")" &>/dev/null
 
-  if [ "$FORMAT" == "HTTPS" ]; then
-    git clone "https://github.com/$REPOSITORY.git" "$MIIRDIR/"
-  elif [ "$FORMAT" == "SSH" ]; then
-    git clone "git@github.com:$REPOSITORY.git" "$MIIRDIR/"
-  elif [ "$FORMAT" == "Abort" ]; then
-    _info "Setup aborted."
-    exit 0
+  if ! _checkCommandExists "git"; then
+    _error "${C_PATH}git${C_DIM} must be installed."
+    exit 1
   fi
+
+  _info "Cloning ${C_PATH}$REPOSITORY${C_DIM} to ${C_PATH}$MIIRDIR"
+  echo -e "\n${C_DIM} Select a protocol:"
+
+  _choose format "HTTPS" "SSH" "Abort"
+  case $format in
+  "HTTPS") git clone "https://github.com/$REPOSITORY.git" "$MIIRDIR/" ;;
+  "SSH") git clone "git@github.com:$REPOSITORY.git" "$MIIRDIR/" ;;
+  "Abort") _warn "Cloning aborted." ;;
+  esac
 else
-  echo
   _warn "${C_PATH}$MIIRDIR/${C_DIM} already exists."
 fi
+echo
 
-[ ! -d "$MIIRDIR/" ] && _error "${C_PATH}$MIIRDIR/${C_DIM} folder not found" && exit 1
+[ ! -d "$MIIRDIR/" ] && _error "${C_PATH}$MIIRDIR/${C_DIM} folder not found." && exit 1
 
 echo -ne "${C_DIM}:: Press ${C_PATH}[ENTER]${C_DIM} to continue.${C_RESET}"
 read
+echo
 
 source "$MIIRDIR/package_manager.sh"
