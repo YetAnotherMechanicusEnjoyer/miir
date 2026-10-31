@@ -158,10 +158,6 @@ fi
 
 [ ! -d "$MIIRDIR/" ] && _error "${C_PATH}$MIIRDIR/${C_DIM} folder not found." && exit 1
 
-echo -ne "${C_DIM}:: Press ${C_PATH}[ENTER]${C_DIM} to continue.${C_RESET}"
-read
-echo
-
 [ ! -d "$STEAMPATH" ] && _error "${C_PATH}$STEAMPATH/${C_DIM} folder not found. Specify Steam path via ${C_YPATH}STEAMPATH${C_DIM} variable" && exit 1
 [ ! -d "$SKYRIMPATH" ] && _error "${C_PATH}$SKYRIMPATH/${C_DIM} folder not found. Skyrim is not installed." && exit 1
 [ ! -d "$PROTONPATH" ] && _error "${C_PATH}$PROTONPATH/${C_DIM} folder not found. You must start Skyrim at least once." && exit 1
