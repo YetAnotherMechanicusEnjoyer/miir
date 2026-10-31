@@ -103,7 +103,7 @@ _clone_repo() {
   fi
 
   _info "Cloning ${C_PATH}$repository${C_DIM} to ${C_PATH}$MIIRDIR"
-  echo -e "\n${C_DIM} Select a protocol:"
+  echo -e "${C_DIM} Select a protocol:"
 
   _choose format "HTTPS" "SSH" "abort"
   case $format in

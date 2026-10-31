@@ -351,7 +351,7 @@ _steam_downgrade_needed() {
   return 1
 }
 
-_steam_downgrade_keizaal() {
+_steamcmd_downgrade_keizaal() {
   local state="$SKYRIM_DIR/.miir-depot-state"
   local expected="489831:8442952117333549665
 489832:8042843504692938467
