@@ -9,6 +9,15 @@ MIIR_PACKAGE_MAP["protontricks|yum"]="protontricks"
 MIIR_PACKAGE_MAP["protontricks|apk"]="protontricks"
 MIIR_PACKAGE_MAP["protontricks|nix"]="protontricks"
 
+MIIR_PACKAGE_MAP["xdg-utils|pacman"]="xdg-utils"
+MIIR_PACKAGE_MAP["xdg-utils|yay"]="xdg-utils"
+MIIR_PACKAGE_MAP["xdg-utils|apt"]="xdg-utils"
+MIIR_PACKAGE_MAP["xdg-utils|apt-get"]="xdg-utils"
+MIIR_PACKAGE_MAP["xdg-utils|dnf"]="xdg-utils"
+MIIR_PACKAGE_MAP["xdg-utils|yum"]="xdg-utils"
+MIIR_PACKAGE_MAP["xdg-utils|apk"]="xdg-utils"
+MIIR_PACKAGE_MAP["xdg-utils|nix"]="xdg-utils"
+
 _dependency_install() {
   local pkg="$1"
   if ! _package_check "$pkg"; then
