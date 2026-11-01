@@ -1,5 +1,34 @@
 #!/usr/bin/env bash
 
+#    __  ____ _
+#   /  |/  (_|_)___
+#  / /|_/ / / / __/
+# /_/  /_/_/_/_/
+# Keizaal Online / Vortex setup
+# https://github.com/YetAnotherMechanicusEnjoyer/miir
+
+readonly REPOSITORY="YetAnotherMechanicusEnjoyer/miir"
+readonly SKYRIM_APPID="489830"
+readonly VORTEX_URL="https://api.nexusmods.com/vortex/download"
+readonly KEIZAAL_URL="https://keizaal.com/api/launcher"
+readonly NXM_MIME="x-scheme-handler/nxm"
+readonly KEIZAAL_MIME="x-scheme-handler/skyrim-rp"
+
+STEAMPATH="${STEAMPATH:-$HOME/.local/share/Steam}"
+MIIRDIR="${MIIRDIR:-$HOME/.local/share/miir}"
+MIIR_CACHE="${MIIR_CACHE:-$HOME/.cache/miir}"
+MIIR_BIN_DIR="${MIIR_BIN_DIR:-$HOME/.local/bin}"
+STEAM_USER="${STEAM_USER:-}"
+
+export STEAMPATH MIIRDIR MIIR_CACHE
+
+readonly SKYRIMPATH="$STEAMPATH/steamapps/common/Skyrim Special Edition"
+readonly PROTONPATH="$STEAMPATH/steamapps/compatdata/$SKYRIM_APPID"
+readonly PREFIX_DRIVE_C="$PROTONPATH/pfx/drive_c"
+readonly XDG_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
+readonly XDG_DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}"
+readonly APPLICATIONS_DIR="$XDG_DATA_DIR/applications"
+
 DISABLE_COLORS=false
 
 _change_color_state() {
@@ -12,19 +41,20 @@ _change_color_state() {
     C_PATH=""
     C_YPATH=""
     C_RESET=""
-  else
-    C_DIM=$'\x1b[0;90m'
-    C_INFO=$'\x1b[0;1;92m'
-    C_WARN=$'\x1b[0;1;93m'
-    C_ERROR=$'\x1b[0;1;91m'
-    C_CYAN=$'\x1b[0;1;96m'
-    C_PATH=$'\x1b[0;1;3;94m'
-    C_YPATH=$'\x1b[0;1;3;93m'
-    C_RESET=$'\x1b[0m'
+    return
   fi
+
+  C_DIM=$'\x1b[0;90m'
+  C_INFO=$'\x1b[0;1;92m'
+  C_WARN=$'\x1b[0;1;93m'
+  C_ERROR=$'\x1b[0;1;91m'
+  C_CYAN=$'\x1b[0;1;96m'
+  C_PATH=$'\x1b[0;1;3;94m'
+  C_YPATH=$'\x1b[0;1;3;93m'
+  C_RESET=$'\x1b[0m'
 }
 
-[ -n "$NO_COLOR" ] && DISABLE_COLORS=true
+[ -n "${NO_COLOR:-}" ] && DISABLE_COLORS=true
 _change_color_state
 
 _info() {
@@ -39,194 +69,375 @@ _error() {
   echo -e "${C_DIM}:: ${C_ERROR}ERROR${C_RESET}${C_DIM} - $1${C_RESET}" >&2
 }
 
+_print_banner() {
+  echo -ne "${C_YPATH}"
+  if _check_command "figlet"; then
+    figlet -f smslant "Miir"
+  else
+    echo "Miir"
+  fi
+  echo -e "${C_RESET}"
+}
+
+_clear_screen() {
+  [[ -t 1 ]] || return 0
+  printf '\x1b[2J\x1b[H'
+}
+
 _choose() {
   local -n res=$1
   shift
 
   local options=("$@")
   local selected=0
-  local current=0
+  local rendered=false
+  local key=""
+  local index
 
-  local HIDE_CURSOR=$'\033[?25l'
-  local SHOW_CURSOR=$'\033[?25h'
+  local HIDE_CURSOR=$'\x1b[?25l'
+  local SHOW_CURSOR=$'\x1b[?25h'
+
+  if [[ ! -t 0 || ! -t 1 ]]; then
+    _error "An interactive terminal is required for this choice."
+    return 1
+  fi
 
   echo -ne "$HIDE_CURSOR"
 
   while true; do
-    if ((current > 0)); then
-      echo -ne "\033[${#options[@]}A"
+    if [[ "$rendered" == true ]]; then
+      echo -ne "\x1b[${#options[@]}A"
     fi
 
     for i in "${!options[@]}"; do
+      printf '\x1b[2K\r'
       if ((i == selected)); then
         echo -e "  ${C_CYAN}> ${options[i]}${C_RESET}"
       else
         echo -e "    ${C_DIM}${options[i]}${C_RESET}"
       fi
     done
-    current=1
+    rendered=true
 
-    read -rsn1 key
-    if [[ $key == $'\033' ]]; then
-      read -rsn2 key
-      if [[ $key == "[A" ]]; then
+    if ! IFS= read -r -s -n 1 key; then
+      echo -e "$SHOW_CURSOR"
+      return 1
+    fi
+
+    case "$key" in
+    $'\x1b')
+      IFS= read -r -s -n 2 key || true
+      case "$key" in
+      '[A')
         ((selected--))
         ((selected < 0)) && selected=$((${#options[@]} - 1))
-      elif [[ $key == "[B" ]]; then
+        ;;
+      '[B')
         ((selected++))
         ((selected >= ${#options[@]})) && selected=0
-      fi
-    elif [[ $key == "" ]]; then
+        ;;
+      esac
+      ;;
+    '')
       break
-    fi
+      ;;
+    esac
   done
 
-  echo -e "$SHOW_CURSOR"
+  echo -ne "$SHOW_CURSOR"
+
   res=${options[$selected]}
 }
 
-_checkCommandExists() {
-  local cmd="$1"
-  if ! command -v "$cmd" >/dev/null; then
+_check_command() {
+  command -v "$1" >/dev/null 2>&1
+}
+
+_require_directory() {
+  local directory="$1"
+  local description="$2"
+  local hint="${3:-}"
+
+  if [[ -d "$directory" ]]; then
+    return 0
+  fi
+
+  _error "$description not found: ${C_PATH}$directory${C_DIM}."
+  [[ -z "$hint" ]] || _info "$hint"
+  return 1
+}
+
+_require_file() {
+  local file="$1"
+  local description="$2"
+
+  [[ -r "$file" ]] && return 0
+  _error "$description not found or unreadable: ${C_PATH}$file${C_DIM}."
+  return 1
+}
+
+_find_prefix_exe() {
+  local root="$1"
+  local filename="$2"
+  local candidate
+
+  [[ -d "$root" ]] || return 1
+  candidate="$(find "$root" -type f -iname "$filename" \
+    -print -quit 2>/dev/null)" || return 1
+  [[ -n "$candidate" && -f "$candidate" ]] || return 1
+  printf '%s\n' "$candidate"
+}
+
+_download_file() {
+  local url="$1"
+  local destination="$2"
+  local temporary="${destination}.part.$$"
+
+  _info "Downloading ${C_PATH}$(basename "$destination")${C_DIM}..."
+  if ! curl --fail --location --silent --show-error \
+    --output "$temporary" "$url"; then
+    rm -f -- "$temporary"
+    _error "Download failed: ${C_PATH}$url${C_DIM}."
     return 1
   fi
-  return 0
+
+  if [[ ! -s "$temporary" ]]; then
+    rm -f -- "$temporary"
+    _error "Downloaded file is empty: ${C_PATH}$destination${C_DIM}."
+    return 1
+  fi
+
+  mv -f -- "$temporary" "$destination"
 }
 
 _clone_repo() {
   local repository="$1"
-  mkdir -p "$(dirname "$MIIRDIR/")" &>/dev/null
+  local protocol
 
-  if ! _checkCommandExists "git"; then
-    _error "${C_PATH}git${C_DIM} must be installed."
-    exit 1
+  if ! _check_command "git"; then
+    _error "${C_PATH}git${C_DIM} must be installed to clone ${C_PATH}$repository${C_DIM}."
+    return 1
   fi
 
   _info "Cloning ${C_PATH}$repository${C_DIM} to ${C_PATH}$MIIRDIR"
   echo -e "${C_DIM} Select a protocol:"
 
-  _choose format "HTTPS" "SSH" "abort"
-  case $format in
+  _choose protocol "HTTPS" "SSH" "abort" || return 1
+  case $protocol in
   "HTTPS") git clone "https://github.com/$repository.git" "$MIIRDIR/" ;;
   "SSH") git clone "git@github.com:$repository.git" "$MIIRDIR/" ;;
   "abort") _warn "Cloning aborted." ;;
   esac
 }
 
-if ((EUID == 0)); then
-  _error "Script must not be executed as ${C_PATH}root${C_DIM}!"
-  exit 1
-fi
+_prepare_repository() {
+  local action
 
-sleep 1
-clear
+  if [[ -d "$MIIRDIR" ]]; then
+    _warn "${C_PATH}$MIIRDIR${C_DIM} already exists."
+    _choose action "continue" "override" || return 1
 
-export STEAMPATH="${STEAMPATH:-$HOME/.local/share/Steam}"
-export MIIRDIR="${MIIRDIR:-$HOME/.local/share/miir}"
-export MIIR_CACHE="${MIIR_CACHE:-$HOME/.cache/miir}"
+    if [[ "$action" == "override" ]]; then
+      _warn "Removing the existing Miir directory."
+      rm -rf -- "$MIIRDIR" || return 1
+      _clone_repository || return 1
+    fi
+  else
+    mkdir -p "$(dirname "$MIIRDIR")" || return 1
+    _clone_repository || return 1
+  fi
 
-REPOSITORY="YetAnotherMechanicusEnjoyer/miir"
-
-STEAM_USER=${STEAM_USER:-}
-
-SKYRIMPATH="$STEAMPATH/steamapps/common/Skyrim Special Edition"
-PROTONPATH="$STEAMPATH/steamapps/compatdata/489830"
-
-VORTEX_LINK="https://api.nexusmods.com/vortex/download"
-KEIZAAL_LINK="https://keizaal.com/api/launcher"
-
-SKYRIM_APPID="489830"
-
-echo -ne "${C_YPATH}"
-if _checkCommandExists "figlet"; then
-  figlet -f smslant "Miir"
-else
-  echo "Miir"
-fi
-echo -e "${C_RESET}"
-
-_info "${C_PATH}Miir${C_DIM} setup ${C_YPATH}started${C_DIM}..."
-echo
-
-if [ ! -d "$MIIRDIR/" ]; then
-  _clone_repo "$REPOSITORY"
-else
-  _warn "${C_PATH}$MIIRDIR/${C_DIM} already exists."
-  _choose clone "override" "continue"
-  [ $clone == "override" ] && rm -rf "$MIIRDIR" && _clone_repo "$REPOSITORY"
-fi
-
-[ ! -d "$MIIRDIR/" ] && _error "${C_PATH}$MIIRDIR/${C_DIM} folder not found." && exit 1
-
-[ ! -d "$STEAMPATH" ] && _error "${C_PATH}$STEAMPATH/${C_DIM} folder not found. Specify Steam path via ${C_YPATH}STEAMPATH${C_DIM} variable" && exit 1
-[ ! -d "$SKYRIMPATH" ] && _error "${C_PATH}$SKYRIMPATH/${C_DIM} folder not found. Skyrim is not installed." && exit 1
-[ ! -d "$PROTONPATH" ] && _error "${C_PATH}$PROTONPATH/${C_DIM} folder not found. You must start Skyrim at least once." && exit 1
-
-source "$MIIRDIR/package_manager.sh"
-source "$MIIRDIR/dependencies.sh"
-
-_dependency_handle "protontricks" "curl"
-
-if ! _checkCommandExists "protontricks" || ! _checkCommandExists "protontricks-launch"; then
-  _error "Failed to install ${C_PATH}protontricks${C_DIM}. Try installing manually."
-  exit 1
-fi
-
-while [ -z "$STEAM_USER" ]; do
-  read -p "${C_DIM}:: Enter your ${C_PATH}Steam${C_DIM} username:${C_RESET} " STEAM_USER
-done
-
-source "$MIIRDIR/steamcmd.sh"
-
-_steamcmd_install || {
-  _error "Failed to install ${C_PATH}steamcmd${C_DIM}. Try installing manually."
-  exit 1
-}
-_steamcmd_downgrade_keizaal || {
-  _error "Failed to downgrade ${C_PATH}Skyrim${C_DIM}. Try downgrading manually."
-  exit 1
+  [[ -d "$MIIRDIR" ]] || {
+    _error "Miir repository is missing: ${C_PATH}$MIIRDIR${C_DIM}."
+    return 1
+  }
 }
 
-[ ! -d "$MIIR_CACHE" ] && mkdir -p "$MIIR_CACHE"
-
-if ! _checkCommandExists "curl"; then
-  _error "Missing ${C_PATH}curl${C_DIM} dependency. Try installing manually."
-  exit 1
-fi
-
-curl -sSfL "$KEIZAAL_LINK" >"$MIIR_CACHE/keizaal.exe" || {
-  _error "Installing ${C_PATH}Keizaal Online Launcher${C_DIM}."
-  exit 1
-}
-curl -sSfL "$VORTEX_LINK" >"$MIIR_CACHE/vortex.exe" || {
-  _error "Installing ${C_PATH}Vortex Setup${C_DIM}."
-  exit 1
+_check_installation_paths() {
+  _require_directory "$STEAMPATH" "Steam installation" \
+    "Set STEAMPATH to your Steam installation directory." || return 1
+  _require_directory "$SKYRIMPATH" "Skyrim Special Edition" \
+    "Install Skyrim before running Miir." || return 1
+  _require_directory "$PROTONPATH" "Skyrim Proton prefix" \
+    "Start Skyrim once through Steam to create its Proton prefix." || return 1
 }
 
-protontricks-launch --appid "$SKYRIM_APPID" "$MIIR_CACHE/keizaal.exe"
-protontricks-launch --appid "$SKYRIM_APPID" "$MIIR_CACHE/vortex.exe"
+_load_project_scripts() {
+  _require_file "$MIIRDIR/package_manager.sh" \
+    "Miir package manager" || return 1
+  _require_file "$MIIRDIR/dependencies.sh" \
+    "Miir dependency manager" || return 1
+  _require_file "$MIIRDIR/steamcmd.sh" \
+    "Miir SteamCMD integration" || return 1
+  _require_file "$MIIRDIR/xdg.sh" \
+    "Miir XDG handler" || return 1
 
-KEIZAAL_DESKTOP="$HOME/.local/share/applications/keizaal-online.desktop"
-VORTEX_DESKTOP="$HOME/.local/share/applications/keizaal-vortex.desktop"
+  source "$MIIRDIR/package_manager.sh" || return 1
+  source "$MIIRDIR/dependencies.sh" || return 1
+  source "$MIIRDIR/xdg.sh" || return 1
+}
 
-echo \
-  "[Desktop Entry]
-Type=Application
-Name=Keizaal Online
-Exec=protontricks-launch --appid 489830 \"/home/archmagos/.local/share/Steam/steamapps/compatdata/489830/pfx/drive_c/users/steamuser/AppData/Local/Programs/skyrim-rp-launcher/keizaal-online.exe\" %u
-MimeType=x-scheme-handler/skyrim-rp;
-Terminal=false" >"$KEIZAAL_DESKTOP"
-chmod +x "$KEIZAAL_LINK"
+_install_dependencies() {
+  _info "Checking system dependencies..."
+  _dependency_handle "protontricks" "curl" "xdg-utils"
 
-echo \
-  "[Desktop Entry]
-Type=Application
-Name=Vortex (Keizaal Online)
-Exec=protontricks-launch --appid 489830 \"/home/archmagos/.local/share/Steam/steamapps/compatdata/489830/pfx/drive_c/Program\ Files/Vortex/Vortex.exe\" --disable-gpu --no-sandbox %u
-MimeType=x-scheme-handler/nxm;
-Terminal=false" >"$VORTEX_DESKTOP"
-chmod +x "$VORTEX_LINK"
+  if ! _check_command protontricks ||
+    ! _check_command protontricks-launch; then
+    _error "${C_PATH}protontricks${C_DIM} is unavailable after installation."
+    _info "Install protontricks manually, then rerun Miir."
+    return 1
+  fi
 
-_info "Installation complete! Install ${C_YPATH}Keizaal Collection${C_DIM} on ${C_YPATH}Vortex${C_DIM}."
-echo -ne "${C_DIM}:: Press ${C_PATH}[ENTER]${C_DIM} to close.${C_RESET}"
-read
+  if ! _check_command curl || ! _check_command xdg-mime; then
+    _error "Required commands are still unavailable after dependency setup."
+    return 1
+  fi
+}
+
+_prompt_steam_user() {
+  while [[ -z "$STEAM_USER" ]]; do
+    echo -e "${C_DIM}:: Enter your ${C_PATH}Steam${C_DIM} username: ${C_CYAN}"
+    IFS= read -r STEAM_USER || {
+      echo -e "${C_RESET}" && return 1
+    }
+    echo -e "${C_RESET}"
+  done
+}
+
+_run_steamcmd_setup() {
+  source "$MIIRDIR/steamcmd.sh" || return 1
+
+  _info "Preparing ${C_PATH}SteamCMD${C_DIM}..."
+  _steamcmd_install || {
+    _error "SteamCMD installation failed."
+    return 1
+  }
+
+  _info "Downgrading ${C_PATH}Skyrim${C_DIM} for Keizaal Online..."
+  _steamcmd_downgrade_keizaal || {
+    _error "Skyrim downgrade failed."
+    return 1
+  }
+}
+
+_download_installers() {
+  mkdir -p "$MIIR_CACHE" || return 1
+  _download_file "$KEIZAAL_URL" "$MIIR_CACHE/keizaal.exe" || return 1
+  _download_file "$VORTEX_URL" "$MIIR_CACHE/vortex.exe" || return 1
+}
+
+_launch_installers() {
+  local protontricks_launch
+  protontricks_launch="$(command -v protontricks-launch)" || return 1
+
+  if [ ! -d "$PREFIX_DRIVE_C/users/steamuser/AppData/Local/Programs/skyrim-rp-launcher/" ]; then
+    _info "Launching ${C_PATH}Keizaal Online Launcher${C_DIM} installer..."
+    "$protontricks_launch" --appid "$SKYRIM_APPID" \
+      "$MIIR_CACHE/keizaal.exe" || {
+      _error "Keizaal Online Launcher installation failed."
+      return 1
+    }
+  fi
+
+  if [ ! -d "$PREFIX_DRIVE_C/Program Files/Vortex" ]; then
+    _info "Launching ${C_PATH}Vortex${C_DIM} installer..."
+    "$protontricks_launch" --appid "$SKYRIM_APPID" \
+      "$MIIR_CACHE/vortex.exe" || {
+      _error "Vortex installation failed."
+      return 1
+    }
+  fi
+}
+
+_install_vortex_integration() {
+  local protontricks_launch
+  local vortex_exe
+  local vortex_launcher="$MIIR_BIN_DIR/miir-vortex"
+  local nxm_handler="$MIIR_BIN_DIR/miir-vortex-nxm"
+  local vortex_desktop="$APPLICATIONS_DIR/miir-vortex.desktop"
+  local nxm_desktop="$APPLICATIONS_DIR/miir-vortex-nxm.desktop"
+
+  protontricks_launch="$(command -v protontricks-launch)" || return 1
+  vortex_exe="$(_find_prefix_exe "$PREFIX_DRIVE_C" "Vortex.exe")" || {
+    _error "Vortex.exe was not found in Skyrim's Proton prefix."
+    _info "Make sure the Vortex installer completed successfully."
+    return 1
+  }
+
+  _write_vortex_launcher "$vortex_launcher" \
+    "$protontricks_launch" "$vortex_exe" || return 1
+  _write_nxm_handler "$nxm_handler" \
+    "$protontricks_launch" "$vortex_exe" || return 1
+  _write_vortex_desktop "$vortex_desktop" "$vortex_launcher" || return 1
+  _write_nxm_desktop "$nxm_desktop" "$nxm_handler" || return 1
+
+  chmod 755 "$vortex_desktop" "$nxm_desktop" || return 1
+  _setup_nxm_association "$nxm_desktop"
+}
+
+_install_keizaal_integration() {
+  local protontricks_launch
+  local keizaal_exe
+  local launcher="$MIIR_BIN_DIR/miir-keizaal"
+  local desktop="$APPLICATIONS_DIR/keizaal-online.desktop"
+
+  keizaal_exe="$(_find_prefix_exe "$PREFIX_DRIVE_C" \
+    "keizaal-online.exe" || true)"
+
+  if [[ -z "$keizaal_exe" ]]; then
+    _warn "Keizaal launcher executable was not found in the Proton prefix."
+    _warn "Vortex and NXM integration are still available."
+    return 0
+  fi
+
+  protontricks_launch="$(command -v protontricks-launch)" || return 1
+  _write_keizaal_launcher "$launcher" \
+    "$protontricks_launch" "$keizaal_exe" || return 1
+  _write_keizaal_desktop "$desktop" "$launcher" || return 1
+  chmod 755 "$desktop" || return 1
+
+  _setup_keizaal_association "$desktop"
+}
+
+main() {
+  if ((EUID == 0)); then
+    _error "Miir must not be executed as ${C_PATH}root${C_DIM}."
+    return 1
+  fi
+
+  _clear_screen
+  _print_banner
+  _info "Miir setup ${C_YPATH}started${C_DIM}."
+  echo
+
+  _prepare_repository || return 1
+  _check_installation_paths || return 1
+  _load_project_scripts || return 1
+  _install_dependencies || return 1
+  _prompt_steam_user || return 1
+  _run_steamcmd_setup || return 1
+
+  mkdir -p "$MIIR_CACHE" "$MIIR_BIN_DIR" \
+    "$APPLICATIONS_DIR" "$XDG_CONFIG_DIR" || {
+    _error "Unable to create Miir or XDG directories."
+    return 1
+  }
+
+  _download_installers || return 1
+  _launch_installers || return 1
+  _install_vortex_integration || return 1
+  _install_keizaal_integration || return 1
+
+  if _check_command update-desktop-database; then
+    update-desktop-database "$APPLICATIONS_DIR" \
+      >/dev/null 2>&1 || true
+  fi
+
+  echo
+  _info "Installation ${C_INFO}complete${C_DIM}!"
+  _info "Install the ${C_YPATH}Keizaal Collection${C_DIM} through Vortex."
+  echo -e "\n${C_DIM}:: Press ${C_PATH}[ENTER]${C_DIM} to close.${C_RESET}"
+  IFS= read -r _ || true
+}
+
+main "$@"

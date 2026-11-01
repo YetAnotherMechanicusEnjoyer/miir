@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+#    __  ____ _
+#   /  |/  (_|_)___
+#  / /|_/ / / / __/
+# /_/  /_/_/_/_/
+# Keizaal Online / Vortex setup
+# https://github.com/YetAnotherMechanicusEnjoyer/miir
+
 STEAMCMD_URL="https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz"
 STEAMCMD_DIR="${STEAMCMD_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/steamcmd}"
 STEAMCMD_BIN="${STEAMCMD_BIN:-}"
@@ -339,7 +346,10 @@ _steam_downgrade_needed() {
 
   [[ ! -f "$executable" ]] && _error "SkyrimSE.exe not found." && return 2
 
-  checksum=$(cksum <"$executable") || return 2
+  checksum=$(cksum <"$executable") || {
+    _error "During: ${C_CYAN}cksum <\"$executable\"${C_DIM}."
+    return 2
+  }
 
   [[ ! -f "$state" ]] && return 0
 
@@ -360,12 +370,15 @@ _steamcmd_downgrade_keizaal() {
   local checksum
   local depot
 
-  if ! _steam_downgrade_needed "$state" "$expected"; then
+  if _steam_downgrade_needed "$state" "$expected"; then
+    :
+  else
     local status=$?
 
     [[ "$status" -eq 1 ]] && _info "Downgrade already applied." && return 0
 
-    return 1
+    _error "Fetching if downgrade is needed (status: $status)."
+    return "$status"
   fi
 
   for depot in \

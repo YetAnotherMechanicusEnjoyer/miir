@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+#    __  ____ _
+#   /  |/  (_|_)___
+#  / /|_/ / / / __/
+# /_/  /_/_/_/_/
+# Keizaal Online / Vortex setup
+# https://github.com/YetAnotherMechanicusEnjoyer/miir
+
 MIIR_PACKAGE_MAP["protontricks|pacman"]="protontricks"
 MIIR_PACKAGE_MAP["protontricks|yay"]="protontricks"
 MIIR_PACKAGE_MAP["protontricks|apt"]="protontricks"

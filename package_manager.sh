@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+#    __  ____ _
+#   /  |/  (_|_)___
+#  / /|_/ / / / __/
+# /_/  /_/_/_/_/
+# Keizaal Online / Vortex setup
+# https://github.com/YetAnotherMechanicusEnjoyer/miir
+
 declare -gA MIIR_PACKAGE_MAP
 declare -ga PACKAGE_RESOLVED=()
 declare -ga PACKAGE_MISSING=()
@@ -64,7 +71,7 @@ _package_manager_detect() {
   fi
 
   for candidate in "${candidates[@]}"; do
-    _checkCommandExists "$candidate" && PACKAGE_MANAGER="$candidate" && return 0
+    _check_command "$candidate" && PACKAGE_MANAGER="$candidate" && return 0
   done
 
   _error "no supported package manager found."
