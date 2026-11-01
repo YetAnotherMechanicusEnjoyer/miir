@@ -322,7 +322,7 @@ _steam_depot_merge() {
   [[ ! -d "$depot_dir" ]] && _error "Depot not found: ${C_PATH}$depot_dir" && return 1
   [[ ! -d "$skyrim_dir" ]] && _error "Skyrim not found: ${C_PATH}$skyrim_dir" && return 1
 
-  _info "Copying ${depot_dir} to ${skyrim_dir}..."
+  _info "Copying ${C_PATH}${depot_dir}${C_DIM} to ${C_PATH}${skyrim_dir}${C_DIM}..."
   cp -a -- "$depot_dir/." "$skyrim_dir/" || {
     _error "Failed to merge depot ${C_PATH}$depot_dir"
     return 1
