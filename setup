@@ -428,6 +428,13 @@ main() {
   _install_vortex_integration || return 1
   _install_keizaal_integration || return 1
 
+  if [[ -f "$MIIRDIR/install-icons.sh" ]]; then
+    bash "$MIIRDIR/install-icons.sh" "$APPLICATIONS_DIR" ||
+      _warn "Could not install application icons. Continuing setup."
+  else
+    _warn "Application icon installer was not found."
+  fi
+
   if _check_command update-desktop-database; then
     update-desktop-database "$APPLICATIONS_DIR" \
       >/dev/null 2>&1 || true
