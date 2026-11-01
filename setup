@@ -240,11 +240,11 @@ _prepare_repository() {
     if [[ "$action" == "override" ]]; then
       _warn "Removing the existing Miir directory."
       rm -rf -- "$MIIRDIR" || return 1
-      _clone_repository || return 1
+      _clone_repo "$REPOSITORY" || return 1
     fi
   else
     mkdir -p "$(dirname "$MIIRDIR")" || return 1
-    _clone_repository || return 1
+    _clone_repo "$REPOSITORY" || return 1
   fi
 
   [[ -d "$MIIRDIR" ]] || {
