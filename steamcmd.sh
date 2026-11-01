@@ -344,7 +344,7 @@ _steam_downgrade_needed() {
   [[ ! -f "$state" ]] && return 0
 
   stored_expected=$(sed -n '1,3p' "$state")
-  stored_checksum=$(std -n '4p' "$state")
+  stored_checksum=$(sed -n '4p' "$state")
 
   [[ "$stored_expected" != "$expected" ]] && return 0
   [[ "$stored_checksum" != "$checksum" ]] && return 0
