@@ -11,7 +11,7 @@ STEAMCMD_URL="https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.ta
 STEAMCMD_DIR="${STEAMCMD_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/steamcmd}"
 STEAMCMD_BIN="${STEAMCMD_BIN:-}"
 
-STEAM_DEPOT="${STEAM_DEPOT:-${STEAMPATH:-$HOME/.local/share/Steam}/ubuntu12_32/steamapps/content/app_489830}"
+STEAM_DEPOT="${STEAM_DEPOT:-$HOME/.steam/steamcmd/linux32/steamapps/content/app_489830}"
 SKYRIM_DIR="${SKYRIM_DIR:-${STEAMPATH:-$HOME/.local/share/Steam}/steamapps/common/Skyrim Special Edition}"
 
 _steamcmd_set_wrapper() {
