@@ -298,7 +298,6 @@ _steamcmd_install() {
     return 1
   fi
   _info "SteamCMD installed successfully: ${C_PATH}$STEAMCMD_BIN${C_DIM}"
-  "$STEAMCMD_BIN" +quit
 }
 
 _steam_download_depot() {
