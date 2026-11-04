@@ -28,8 +28,8 @@ STEAM_USER="${STEAM_USER:-}"
 
 export STEAMPATH MIIRDIR MIIR_CACHE
 
-readonly SKYRIMPATH="$STEAMPATH/steamapps/common/Skyrim Special Edition"
-readonly PROTONPATH="$STEAMPATH/steamapps/compatdata/$SKYRIM_APPID"
+readonly SKYRIMPATH="steamapps/common/Skyrim Special Edition"
+readonly PROTONPATH="steamapps/compatdata/$SKYRIM_APPID"
 readonly PREFIX_DRIVE_C="$PROTONPATH/pfx/drive_c"
 readonly XDG_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}"
 readonly XDG_DATA_DIR="${XDG_DATA_HOME:-$HOME/.local/share}"
@@ -260,12 +260,22 @@ _prepare_repository() {
 }
 
 _check_installation_paths() {
-  _require_directory "$STEAMPATH" "Steam installation" \
-    "Set STEAMPATH to your Steam installation directory." || return 1
-  _require_directory "$SKYRIMPATH" "Skyrim Special Edition" \
-    "Install Skyrim before running Miir." || return 1
-  _require_directory "$PROTONPATH" "Skyrim Proton prefix" \
-    "Start Skyrim once through Steam to create its Proton prefix." || return 1
+  for path in "${STEAM_FALLBACKS[@]}"; do
+    if [ -d "$path/" ]; then
+      _require_directory "$path" "Steam installation" \
+        "Set STEAMPATH to your Steam installation directory." || return 1
+    fi
+
+    if [ -d "$path/$SKYRIMPATH" ]; then
+      _require_directory "$path/$SKYRIMPATH" "Skyrim Special Edition" \
+        "Install Skyrim before running Miir." || return 1
+    fi
+
+    if [ -d "$path/$PROTONPATH" ]; then
+      _require_directory "$path/$PROTONPATH" "Skyrim Proton prefix" \
+        "Start Skyrim once through Steam to create its Proton prefix." || return 1
+    fi
+  done
 }
 
 _load_project_scripts() {
