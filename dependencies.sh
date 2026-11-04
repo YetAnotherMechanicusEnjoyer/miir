@@ -25,6 +25,12 @@ MIIR_PACKAGE_MAP["xdg-utils|yum"]="xdg-utils"
 MIIR_PACKAGE_MAP["xdg-utils|apk"]="xdg-utils"
 MIIR_PACKAGE_MAP["xdg-utils|nix"]="xdg-utils"
 
+_protontricks_install() {
+  _sudo "$PACKAGE_MANAGER" install pipx
+  pipx ensurepath
+  pipx install protontricks
+}
+
 _dependency_install() {
   local pkg="$1"
   if ! _package_check "$pkg"; then
@@ -38,6 +44,10 @@ _dependency_handle() {
   local pkgs=("$@")
   _package_resolve "${pkgs[@]}"
   for pkg in "${PACKAGE_RESOLVED[@]}"; do
+    if [[ "$pkg" == "protontricks" ]] && [[ "$PACKAGE_MANAGER" == "apt" || "$PACKAGE_MANAGER" == "apt-get" ]]; then
+      _protontricks_install
+      continue
+    fi
     _dependency_install "$pkg"
   done
 }
