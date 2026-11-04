@@ -260,22 +260,29 @@ _prepare_repository() {
 }
 
 _check_installation_paths() {
+  local found=0
+
   for path in "${STEAM_FALLBACKS[@]}"; do
     if [ -d "$path/" ]; then
       _require_directory "$path" "Steam installation" \
         "Set STEAMPATH to your Steam installation directory." || return 1
+      ((found++))
     fi
 
     if [ -d "$path/$SKYRIMPATH" ]; then
       _require_directory "$path/$SKYRIMPATH" "Skyrim Special Edition" \
         "Install Skyrim before running Miir." || return 1
+      ((found++))
     fi
 
     if [ -d "$path/$PROTONPATH" ]; then
       _require_directory "$path/$PROTONPATH" "Skyrim Proton prefix" \
         "Start Skyrim once through Steam to create its Proton prefix." || return 1
+      ((found++))
     fi
   done
+
+  ((found < 3)) && return 1
 }
 
 _load_project_scripts() {
