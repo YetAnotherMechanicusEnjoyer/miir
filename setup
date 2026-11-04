@@ -261,7 +261,7 @@ _check_installation_paths() {
   local found=0
 
   for path in "${STEAM_PATHS[@]}"; do
-    if [ -d "$path/" ]; then
+    if [ -f "$path/steam.sh" ]; then
       _require_directory "$path" "Steam installation" \
         "Set STEAMPATH to your Steam installation directory." || return 1
       _info "Found ${C_PATH}$path${C_DIM}."
