@@ -14,7 +14,10 @@ readonly KEIZAAL_URL="https://keizaal.com/api/launcher"
 readonly NXM_MIME="x-scheme-handler/nxm"
 readonly KEIZAAL_MIME="x-scheme-handler/skyrim-rp"
 
-STEAMPATH="${STEAMPATH:-$HOME/.local/share/Steam}"
+STEAMPATH="${STEAMPATH:-}"
+[ ! -d "$STEAMPATH" ] && STEAMPATH="$HOME/.local/share/Steam"
+[ ! -d "$STEAMPATH" ] && STEAMPATH="$HOME/.steam/root"
+
 MIIRDIR="${MIIRDIR:-$HOME/.local/share/miir}"
 MIIR_CACHE="${MIIR_CACHE:-$HOME/.cache/miir}"
 MIIR_BIN_DIR="${MIIR_BIN_DIR:-$HOME/.local/bin}"
