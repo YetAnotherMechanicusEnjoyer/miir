@@ -11,8 +11,21 @@ STEAMCMD_URL="https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.ta
 STEAMCMD_DIR="${STEAMCMD_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/steamcmd}"
 STEAMCMD_BIN="${STEAMCMD_BIN:-}"
 
-STEAM_DEPOT="${STEAM_DEPOT:-$HOME/.steam/steamcmd/linux32/steamapps/content/app_489830}"
-SKYRIM_DIR="${SKYRIM_DIR:-${STEAMPATH:-$HOME/.local/share/Steam}/steamapps/common/Skyrim Special Edition}"
+DEPOT="${DEPOT:-steamcmd/linux32/steamapps/content/app_489830}"
+SKYRIM_DIR="${SKYRIM_DIR:-steamapps/common/Skyrim Special Edition}"
+
+SKYRIM_PATH="${SKYRIM_PATH:-}"
+STEAM_DEPOT="${STEAM_DEPOT:-}"
+
+for path in "${STEAM_FALLBACKS[@]}"; do
+  if [ -d "$path/$SKYRIM_DIR" ]; then
+    SKYRIM_PATH="$path/$SKYRIM_DIR"
+  fi
+
+  if [ -d "$path/$DEPOT" ]; then
+    STEAM_DEPOT="$path/$DEPOT"
+  fi
+done
 
 _steamcmd_set_wrapper() {
   local target="$1"
@@ -339,7 +352,7 @@ _steam_depot_merge() {
 _steam_downgrade_needed() {
   local state="$1"
   local expected="$2"
-  local executable="$SKYRIM_DIR/SkyrimSE.exe"
+  local executable="$SKYRIM_PATH/SkyrimSE.exe"
   local checksum
   local stored_expected
   local stored_checksum
@@ -363,7 +376,7 @@ _steam_downgrade_needed() {
 }
 
 _steamcmd_downgrade_keizaal() {
-  local state="$SKYRIM_DIR/.miir-depot-state"
+  local state="$SKYRIM_PATH/.miir-depot-state"
   local expected="489831:8442952117333549665
 489832:8042843504692938467
 489833:1914580699073641964"
@@ -391,10 +404,10 @@ _steamcmd_downgrade_keizaal() {
   done
 
   for depot in 489831 489832 489833; do
-    _steam_depot_merge "$STEAM_DEPOT/depot_$depot" "$SKYRIM_DIR" || return 1
+    _steam_depot_merge "$STEAM_DEPOT/depot_$depot" "$SKYRIM_PATH" || return 1
   done
 
-  checksum=$(cksum <"$SKYRIM_DIR/SkyrimSE.exe") || return 1
+  checksum=$(cksum <"$SKYRIM_PATH/SkyrimSE.exe") || return 1
 
   {
     printf '%s\n' "$expected"
