@@ -266,18 +266,21 @@ _check_installation_paths() {
     if [ -d "$path/" ]; then
       _require_directory "$path" "Steam installation" \
         "Set STEAMPATH to your Steam installation directory." || return 1
+      _info "Found ${C_PATH}$path${C_DIM}."
       ((found++))
     fi
 
     if [ -d "$path/$SKYRIMPATH" ]; then
       _require_directory "$path/$SKYRIMPATH" "Skyrim Special Edition" \
         "Install Skyrim before running Miir." || return 1
+      _info "Found ${C_PATH}$path/$SKYRIMPATH${C_DIM}."
       ((found++))
     fi
 
     if [ -d "$path/$PROTONPATH" ]; then
       _require_directory "$path/$PROTONPATH" "Skyrim Proton prefix" \
         "Start Skyrim once through Steam to create its Proton prefix." || return 1
+      _info "Found ${C_PATH}$path/$PROTONPATH${C_DIM}."
       ((found++))
     fi
   done
