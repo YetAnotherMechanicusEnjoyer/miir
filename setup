@@ -356,23 +356,27 @@ _launch_installers() {
   local protontricks_launch
   protontricks_launch="$(command -v protontricks-launch)" || return 1
 
-  if [ ! -d "$PREFIX_DRIVE_C/users/steamuser/AppData/Local/Programs/skyrim-rp-launcher/" ]; then
-    _info "Launching ${C_PATH}Keizaal Online Launcher${C_DIM} installer..."
-    "$protontricks_launch" --appid "$SKYRIM_APPID" \
-      "$MIIR_CACHE/keizaal.exe" || {
-      _error "Keizaal Online Launcher installation failed."
-      return 1
-    }
-  fi
+  for path in "${STEAM_PATHS[@]}"; do
+    if [ -d "$path/$PREFIX_DRIVE_C" ]; then
+      if [ ! -d "$path/$PREFIX_DRIVE_C/users/steamuser/AppData/Local/Programs/skyrim-rp-launcher/" ]; then
+        _info "Launching ${C_PATH}Keizaal Online Launcher${C_DIM} installer..."
+        "$protontricks_launch" --appid "$SKYRIM_APPID" \
+          "$MIIR_CACHE/keizaal.exe" || {
+          _error "Keizaal Online Launcher installation failed."
+          return 1
+        }
+      fi
 
-  if [ ! -d "$PREFIX_DRIVE_C/Program Files/Vortex" ]; then
-    _info "Launching ${C_PATH}Vortex${C_DIM} installer..."
-    "$protontricks_launch" --appid "$SKYRIM_APPID" \
-      "$MIIR_CACHE/vortex.exe" || {
-      _error "Vortex installation failed."
-      return 1
-    }
-  fi
+      if [ ! -d "$path/$PREFIX_DRIVE_C/Program Files/Vortex" ]; then
+        _info "Launching ${C_PATH}Vortex${C_DIM} installer..."
+        "$protontricks_launch" --appid "$SKYRIM_APPID" \
+          "$MIIR_CACHE/vortex.exe" || {
+          _error "Vortex installation failed."
+          return 1
+        }
+      fi
+    fi
+  done
 }
 
 _install_vortex_integration() {
@@ -382,9 +386,16 @@ _install_vortex_integration() {
   local nxm_handler="$MIIR_BIN_DIR/miir-vortex-nxm"
   local vortex_desktop="$APPLICATIONS_DIR/miir-vortex.desktop"
   local nxm_desktop="$APPLICATIONS_DIR/miir-vortex-nxm.desktop"
+  local prefix
+
+  for path in "${STEAM_PATHS[@]}"; do
+    if [ -d "$path/$PREFIX_DRIVE_C" ]; then
+      prefix="$path/$PREFIX_DRIVE_C"
+    fi
+  done
 
   protontricks_launch="$(command -v protontricks-launch)" || return 1
-  vortex_exe="$(_find_prefix_exe "$PREFIX_DRIVE_C" "Vortex.exe")" || {
+  vortex_exe="$(_find_prefix_exe "$prefix" "Vortex.exe")" || {
     _error "Vortex.exe was not found in Skyrim's Proton prefix."
     _info "Make sure the Vortex installer completed successfully."
     return 1
