@@ -11,8 +11,8 @@ STEAMCMD_URL="https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.ta
 STEAMCMD_DIR="${STEAMCMD_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/steamcmd}"
 STEAMCMD_BIN="${STEAMCMD_BIN:-}"
 
-DEPOT="${DEPOT:-steamcmd/linux32/steamapps/content/app_489830}"
 SKYRIM_DIR="${SKYRIM_DIR:-steamapps/common/Skyrim Special Edition}"
+DEPOT="${DEPOT:-steamcmd/linux32/steamapps/content/app_489830}"
 
 SKYRIM_PATH="${SKYRIM_PATH:-}"
 STEAM_DEPOT="${STEAM_DEPOT:-}"
@@ -357,7 +357,7 @@ _steam_downgrade_needed() {
   local stored_expected
   local stored_checksum
 
-  [[ ! -f "$executable" ]] && _error "SkyrimSE.exe not found." && return 2
+  [[ ! -f "$executable" ]] && _error "SkyrimSE.exe not found (${C_PATH}$executable${C_DIM})." && return 2
 
   checksum=$(cksum <"$executable") || {
     _error "During: ${C_CYAN}cksum <\"$executable\"${C_DIM}."
