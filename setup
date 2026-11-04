@@ -434,7 +434,9 @@ main() {
   echo
 
   _prepare_repository || return 1
-  _check_installation_paths || return 1
+  _check_installation_paths || {
+    _error "Checking installation paths" && return 1
+  }
   _load_project_scripts || return 1
   _install_dependencies || return 1
   _prompt_steam_user || return 1
