@@ -96,7 +96,6 @@ _choose() {
   local selected=0
   local rendered=false
   local key=""
-  local index
 
   local HIDE_CURSOR=$'\x1b[?25l'
   local SHOW_CURSOR=$'\x1b[?25h'
@@ -283,7 +282,10 @@ _check_installation_paths() {
     fi
   done
 
-  ((found < 3)) && return 1
+  if ((found < 3)); then
+    _error "Checking installation paths (found: $found)"
+    return 1
+  fi
 }
 
 _load_project_scripts() {
@@ -435,9 +437,7 @@ main() {
   echo
 
   _prepare_repository || return 1
-  _check_installation_paths || {
-    _error "Checking installation paths" && return 1
-  }
+  _check_installation_paths || return 1
   _load_project_scripts || return 1
   _install_dependencies || return 1
   _prompt_steam_user || return 1
