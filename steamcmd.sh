@@ -17,7 +17,7 @@ DEPOT="${DEPOT:-steamcmd/linux32/steamapps/content/app_489830}"
 SKYRIM_PATH="${SKYRIM_PATH:-}"
 STEAM_DEPOT="${STEAM_DEPOT:-}"
 
-for path in "${STEAM_FALLBACKS[@]}"; do
+for path in "${STEAM_PATHS[@]}"; do
   if [ -d "$path/$SKYRIM_DIR" ]; then
     SKYRIM_PATH="$path/$SKYRIM_DIR"
   fi

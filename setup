@@ -26,8 +26,6 @@ MIIR_CACHE="${MIIR_CACHE:-$HOME/.cache/miir}"
 MIIR_BIN_DIR="${MIIR_BIN_DIR:-$HOME/.local/bin}"
 STEAM_USER="${STEAM_USER:-}"
 
-export STEAMPATH MIIRDIR MIIR_CACHE
-
 readonly SKYRIMPATH="steamapps/common/Skyrim Special Edition"
 readonly PROTONPATH="steamapps/compatdata/$SKYRIM_APPID"
 readonly PREFIX_DRIVE_C="$PROTONPATH/pfx/drive_c"
@@ -262,7 +260,7 @@ _prepare_repository() {
 _check_installation_paths() {
   local found=0
 
-  for path in "${STEAM_FALLBACKS[@]}"; do
+  for path in "${STEAM_PATHS[@]}"; do
     if [ -d "$path/" ]; then
       _require_directory "$path" "Steam installation" \
         "Set STEAMPATH to your Steam installation directory." || return 1
